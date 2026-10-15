@@ -8,6 +8,11 @@ jobs:
       - name: Checkout Main Repository Base
         uses: actions/checkout@v4
 
+      - name: Install Missing Compilation Dependencies (Ripgrep)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+
       - name: Generate Local Gitmodules Mapping
         run: |
           cat << 'EOF' > .gitmodules
@@ -25,11 +30,8 @@ jobs:
 
           void __attribute__((constructor)) load_1360_fpkg_fix(void) {
               uint64_t target_kbase = 0;
-              // Call the SDK-provided API function cleanly
               if (ps5_kernel_get_base(&target_kbase) == 0 && target_kbase != 0) {
                   uint64_t final_patch_addr = target_kbase + 0x001e0e0a7;
-                  
-                  // Native inline assembly handles CR0 manipulation directly without macros
                   __asm__ volatile(
                       "mov %%cr0, %%rax\n"
                       "mov %%rax, %%rdx\n"
