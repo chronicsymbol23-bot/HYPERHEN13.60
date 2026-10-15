@@ -7,13 +7,20 @@ jobs:
     steps:
       - name: Checkout Main Repository Base
         uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
 
-      - name: Clear and Recreate Submodule Mirror
+      - name: Generate Local Gitmodules Mapping
         run: |
-          rm -rf third_party/kstuff-a53
-          git clone --depth 1 https://github.com third_party/kstuff-a53
+          # Programmatically build the missing submodule map definition file inside the runner workspace
+          cat << 'EOF' > .gitmodules
+          [submodule "third_party/kstuff-a53"]
+              path = third_party/kstuff-a53
+              url = https://github.com
+          EOF
+          
+          # Initialize, sync, and sync the project tree mappings
+          git submodule init
+          git submodule sync
+          git submodule update --init --recursive --depth 1
 
       - name: Inject Clean 13.60 Pure Assembly Hack
         run: |
@@ -22,11 +29,8 @@ jobs:
 
           void __attribute__((constructor)) load_1360_fpkg_fix(void) {
               uint64_t target_kbase = 0;
-              // Call the system API wrapper directly to fetch the kernel offset
               if (ps5_kernel_get_base(&target_kbase) == 0 && target_kbase != 0) {
                   uint64_t final_patch_addr = target_kbase + 0x001e0e0a7;
-                  
-                  // Use raw x86_64 CPU instructions to handle the WP bit and write operations cleanly
                   __asm__ volatile(
                       "mov %%cr0, %%rax\n"
                       "mov %%rax, %%rdx\n"
