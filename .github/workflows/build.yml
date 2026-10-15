@@ -5,11 +5,16 @@ jobs:
   build-payload:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository and Submodules
+      - name: Checkout Main Repository Base
         uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-          fetch-depth: 0
+
+      - name: Manually Inject Submodule Architecture
+        run: |
+          mkdir -p third_party/kstuff-a53
+          curl -L https://github.com -o kstuff.zip
+          unzip kstuff.zip
+          mv kstuff-a53-main/* third_party/kstuff-a53/
+          rm -rf kstuff.zip kstuff-a53-main
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
