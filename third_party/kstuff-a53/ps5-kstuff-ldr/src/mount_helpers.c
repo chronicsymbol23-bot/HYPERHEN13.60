@@ -6,10 +6,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <stdint.h>
 
 #include "mount_helpers.h"
 #include "utils.h"
 #include "types.h"
+
+#define TARGET_1360_OFFSET 0x001e0e0a7
 
 int remount_system_ex(void) {
     struct iovec iov[] = {
@@ -37,4 +40,22 @@ int is_mounted(const char* path) {
     struct statfs sfs;
     if (statfs(path, &sfs) != 0) return 0;
     return strcmp(sfs.f_fstypename, "nullfs") == 0;
+}
+
+void patch_1360_pkg_verification(uint64_t kernel_base) {
+    // 1. Read CR0 and clear the 16th (Write Protect) bit to allow kernel page edits
+    uint64_t cr0;
+    __asm__ volatile("mov %%cr0, %0" : "=r"(cr0));
+    __asm__ volatile("mov %0, %%cr0" : : "r"(cr0 & ~0x10000));
+
+    // 2. Identify the exact signature check location coordinates
+    uint8_t *patch_target = (uint8_t *)(kernel_base + TARGET_1360_OFFSET);
+    
+    // 3. Inject assembly instructions: XOR EAX, EAX; RET (\x31\xC0\xC3)
+    patch_target[0] = 0x31;
+    patch_target[1] = 0xC0;
+    patch_target[2] = 0xC3;
+
+    // 4. Re-enable hardware CPU Write Protection immediately
+    __asm__ volatile("mov %0, %%cr0" : : "r"(cr0));
 }
