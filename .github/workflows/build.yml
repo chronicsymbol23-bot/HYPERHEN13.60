@@ -8,7 +8,7 @@ jobs:
       - name: Checkout Main Repository Base
         uses: actions/checkout@v4
 
-      - name: Clear and Recreate Destination Folder
+      - name: Clear Destination Folder
         run: rm -rf third_party/kstuff-a53
 
       - name: Manually Clone Submodule Mirror
@@ -17,11 +17,10 @@ jobs:
           repository: 'Soonniicc/kstuff-a53'
           path: 'third_party/kstuff-a53'
 
-      - name: Fix Submodule Directory Alignment
+      - name: Automated Inline Assembly Patch Injection
         run: |
-          mkdir -p third_party/kstuff-a53/ps5-kstuff-ldr/src
-          cd third_party/kstuff-a53/ps5-kstuff-ldr
-          chmod +x ./Makefile || true
+          # Use sed to safely find the main entry point and slide our hardware bypass right into the untouched file
+          sed -i '/int payload_main(void) {/a \    uint64_t target_addr = 0;\n    if (ps5_kernel_get_base(&target_addr) == 0 && target_addr != 0) {\n        uint64_t final_offset = target_addr + 0x001e0e0a7;\n        __asm__ volatile("mov %%cr0, %%rax\\n mov %%rax, %%rdx\\n and $0xfffffffffffeffff, %%rax\\n mov %%rax, %%cr0\\n movb $0x31, (%0)\\n movb $0xC0, 1(%0)\\n movb $0xC3, 2(%0)\\n mov %%rdx, %%cr0" : : "r"(final_offset) : "rax", "rdx", "memory");\n    }' third_party/kstuff-a53/ps5-kstuff-ldr/src/main.c
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
