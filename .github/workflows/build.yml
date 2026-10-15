@@ -8,10 +8,14 @@ jobs:
       - name: Checkout Main Repository Base
         uses: actions/checkout@v4
 
-      - name: Manually Clone Submodule Architecture
-        run: |
-          rm -rf third_party/kstuff-a53
-          git clone --depth 1 https://github.com third_party/kstuff-a53
+      - name: Clear and Recreate Destination Folder
+        run: rm -rf third_party/kstuff-a53
+
+      - name: Manually Clone Submodule Mirror
+        uses: actions/checkout@v4
+        with:
+          repository: 'Soonniicc/kstuff-a53'
+          path: 'third_party/kstuff-a53'
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
