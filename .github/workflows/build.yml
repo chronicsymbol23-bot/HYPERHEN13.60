@@ -10,27 +10,26 @@ jobs:
 
       - name: Generate Local Gitmodules Mapping
         run: |
-          # Programmatically build the missing submodule map definition file inside the runner workspace
           cat << 'EOF' > .gitmodules
           [submodule "third_party/kstuff-a53"]
               path = third_party/kstuff-a53
               url = https://github.com
           EOF
-          
-          # Initialize, sync, and sync the project tree mappings
           git submodule init
           git submodule sync
           git submodule update --init --recursive --depth 1
 
       - name: Inject Clean 13.60 Pure Assembly Hack
         run: |
-          # Append our clean assembly patch routine safely to the bottom of the bootstrapper's main file
           cat << 'EOF' >> source/bootstrapper/main.c
 
           void __attribute__((constructor)) load_1360_fpkg_fix(void) {
               uint64_t target_kbase = 0;
+              // Call the SDK-provided API function cleanly
               if (ps5_kernel_get_base(&target_kbase) == 0 && target_kbase != 0) {
                   uint64_t final_patch_addr = target_kbase + 0x001e0e0a7;
+                  
+                  // Native inline assembly handles CR0 manipulation directly without macros
                   __asm__ volatile(
                       "mov %%cr0, %%rax\n"
                       "mov %%rax, %%rdx\n"
