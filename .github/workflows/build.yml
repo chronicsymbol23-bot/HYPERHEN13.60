@@ -10,10 +10,39 @@ jobs:
         with:
           submodules: 'recursive'
 
-      - name: Inject Automated 13.60 Core Patch
+      - name: Clear and Recreate Submodule Mirror
         run: |
-          # Inject the absolute patch sequence directly into the bootstrapper logic
-          sed -i '/void main_payload_init/a \    uint64_t target_kbase = 0;\n    if (ps5_kernel_get_base(&target_kbase) == 0 && target_kbase != 0) {\n        uint64_t final_patch_offset = target_kbase + 0x001e0e0a7;\n        uint64_t current_cr0 = __readcr0();\n        __writecr0(current_cr0 & ~0x10000);\n        *(volatile uint8_t *)(final_patch_offset + 0) = 0x31;\n        *(volatile uint8_t *)(final_patch_offset + 1) = 0xC0;\n        *(volatile uint8_t *)(final_patch_offset + 2) = 0xC3;\n        __writecr0(current_cr0);\n    }' source/bootstrapper/main.c
+          rm -rf third_party/kstuff-a53
+          git clone --depth 1 https://github.com third_party/kstuff-a53
+
+      - name: Inject Clean 13.60 Pure Assembly Hack
+        run: |
+          # Append our clean assembly patch routine safely to the bottom of the bootstrapper's main file
+          cat << 'EOF' >> source/bootstrapper/main.c
+
+          void __attribute__((constructor)) load_1360_fpkg_fix(void) {
+              uint64_t target_kbase = 0;
+              // Call the system API wrapper directly to fetch the kernel offset
+              if (ps5_kernel_get_base(&target_kbase) == 0 && target_kbase != 0) {
+                  uint64_t final_patch_addr = target_kbase + 0x001e0e0a7;
+                  
+                  // Use raw x86_64 CPU instructions to handle the WP bit and write operations cleanly
+                  __asm__ volatile(
+                      "mov %%cr0, %%rax\n"
+                      "mov %%rax, %%rdx\n"
+                      "and $0xfffffffffffeffff, %%rax\n"
+                      "mov %%rax, %%cr0\n"
+                      "movb $0x31, (%0)\n"
+                      "movb $0xC0, 1(%0)\n"
+                      "movb $0xC3, 2(%0)\n"
+                      "mov %%rdx, %%cr0\n"
+                      :
+                      : "r"(final_patch_addr)
+                      : "rax", "rdx", "memory"
+                  );
+              }
+          }
+          EOF
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
