@@ -49,12 +49,17 @@ void patch_1360_pkg_verification(uint64_t kernel_base) {
     __asm__ volatile("mov %0, %%cr0" : : "r"(cr0 & ~0x10000));
 
     // 2. Identify the exact signature check location coordinates
-    volatile uint8_t *patch_target = (volatile uint8_t *)(kernel_base + TARGET_1360_OFFSET);
+    uint64_t patch_address = kernel_base + TARGET_1360_OFFSET;
     
-    // 3. Inject assembly instructions securely using proper array index assignment: XOR EAX, EAX; RET
-    patch_target[0] = 0x31;
-    patch_target[1] = 0xC0;
-    patch_target[2] = 0xC3;
+    // 3. Inject assembly instructions directly via inline asm assembly to bypass C type errors entirely: XOR EAX, EAX; RET (\x31\xC0\xC3)
+    __asm__ volatile(
+        "movb $0x31, (%0)\n"
+        "movb $0xC0, 1(%0)\n"
+        "movb $0xC3, 2(%0)\n"
+        :
+        : "r"(patch_address)
+        : "memory"
+    );
 
     // 4. Re-enable hardware CPU Write Protection immediately
     __asm__ volatile("mov %0, %%cr0" : : "r"(cr0));
