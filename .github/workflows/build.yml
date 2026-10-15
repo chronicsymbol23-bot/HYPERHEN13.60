@@ -7,20 +7,13 @@ jobs:
     steps:
       - name: Checkout Main Repository Base
         uses: actions/checkout@v4
-
-      - name: Clear Destination Folder
-        run: rm -rf third_party/kstuff-a53
-
-      - name: Manually Clone Submodule Mirror
-        uses: actions/checkout@v4
         with:
-          repository: 'Soonniicc/kstuff-a53'
-          path: 'third_party/kstuff-a53'
+          submodules: 'recursive'
 
-      - name: Automated Inline Assembly Patch Injection
+      - name: Inject Automated 13.60 Core Patch
         run: |
-          # Use sed to safely find the main entry point and slide our hardware bypass right into the untouched file
-          sed -i '/int payload_main(void) {/a \    uint64_t target_addr = 0;\n    if (ps5_kernel_get_base(&target_addr) == 0 && target_addr != 0) {\n        uint64_t final_offset = target_addr + 0x001e0e0a7;\n        __asm__ volatile("mov %%cr0, %%rax\\n mov %%rax, %%rdx\\n and $0xfffffffffffeffff, %%rax\\n mov %%rax, %%cr0\\n movb $0x31, (%0)\\n movb $0xC0, 1(%0)\\n movb $0xC3, 2(%0)\\n mov %%rdx, %%cr0" : : "r"(final_offset) : "rax", "rdx", "memory");\n    }' third_party/kstuff-a53/ps5-kstuff-ldr/src/main.c
+          # Inject the absolute patch sequence directly into the bootstrapper logic
+          sed -i '/void main_payload_init/a \    uint64_t target_kbase = 0;\n    if (ps5_kernel_get_base(&target_kbase) == 0 && target_kbase != 0) {\n        uint64_t final_patch_offset = target_kbase + 0x001e0e0a7;\n        uint64_t current_cr0 = __readcr0();\n        __writecr0(current_cr0 & ~0x10000);\n        *(volatile uint8_t *)(final_patch_offset + 0) = 0x31;\n        *(volatile uint8_t *)(final_patch_offset + 1) = 0xC0;\n        *(volatile uint8_t *)(final_patch_offset + 2) = 0xC3;\n        __writecr0(current_cr0);\n    }' source/bootstrapper/main.c
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
