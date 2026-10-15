@@ -94,10 +94,10 @@ static int publish_hypercore_loader_starting(void) {
                   O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd < 0)
         return -1;
-    char value[32];
-    int length = snprintf(value, sizeof(value), "%d\n", (int)getpid());
+    char value;
+    int length = snprintf(&value, sizeof(value), "%d\n", (int)getpid());
     bool valid = length > 0 && (size_t)length < sizeof(value);
-    ssize_t written = valid ? write(fd, value, (size_t)length) : -1;
+    ssize_t written = valid ? write(fd, &value, (size_t)length) : -1;
     int close_result = close(fd);
     return valid && written == (ssize_t)length && close_result == 0 ? 0 : -1;
 }
