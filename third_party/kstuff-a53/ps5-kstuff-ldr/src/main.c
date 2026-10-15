@@ -14,7 +14,7 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; see the file COPYING. If not, see
-<http://www.gnu.org/licenses/>.  */           
+<http://gnu.org>.  */           
 
 #include <elf.h>
 #include <stdio.h>
@@ -154,7 +154,7 @@ static int mount_source(const char* src_path, char* out_mounted_path,
                         bool* out_temporary_mount)
 {
     struct stat source_st;
-    char image_path[MAX_PATH] = {0};
+    char image_path[PATH_MAX] = {0};
     bool is_ufs = false, is_pfs = false, is_pfsc = false, is_exfat = false;
 
     if (!src_path || !*src_path || !out_mounted_path ||
@@ -179,8 +179,8 @@ static int mount_source(const char* src_path, char* out_mounted_path,
         
         klog_printf("Image detected in folder: %s\n", image_path);
 
-        char mount_point[MAX_PATH] = {0};
-        char nullfs_src[MAX_PATH] = {0};
+        char mount_point[PATH_MAX] = {0};
+        char nullfs_src[PATH_MAX] = {0};
 
         if (is_ufs && mount_ufs_image(image_path, mount_point)) {
             klog_printf("UFS image mounted\n");
@@ -196,21 +196,21 @@ static int mount_source(const char* src_path, char* out_mounted_path,
             klog_printf("PFSC image detected: %s\n", strrchr(image_path, '/') ? 
                        strrchr(image_path, '/') + 1 : image_path);
 
-            char pfsc_mount_point[MAX_PATH] = {0};
+            char pfsc_mount_point[PATH_MAX] = {0};
             if (mount_pfsc_image(image_path, pfsc_mount_point)) {
                 strncpy(nullfs_src, pfsc_mount_point, sizeof(nullfs_src)-1);
                 strncpy(mount_point, pfsc_mount_point, sizeof(mount_point)-1);
                 *out_temporary_mount = true;
 
                 // === NESTED IMAGE SUPPORT ===
-                char nested_image[MAX_PATH] = {0};
+                char nested_image[PATH_MAX] = {0};
                 bool n_ufs = false, n_pfs = false, n_pfsc = false, n_exfat = false;
 
                 klog_printf("Scanning for nested image inside PFSC...\n");
                 if (find_image_in_dir(pfsc_mount_point, nested_image, sizeof(nested_image),
                                     &n_ufs, &n_pfs, &n_pfsc, &n_exfat)) {
 
-                    char nested_mount[MAX_PATH] = {0};
+                    char nested_mount[PATH_MAX] = {0};
                     bool nested_ok = false;
 
                     if (n_ufs) {
