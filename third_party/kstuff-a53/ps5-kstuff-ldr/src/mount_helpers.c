@@ -49,9 +49,9 @@ void patch_1360_pkg_verification(uint64_t kernel_base) {
     __asm__ volatile("mov %0, %%cr0" : : "r"(cr0 & ~0x10000));
 
     // 2. Identify the exact signature check location coordinates
-    uint8_t *patch_target = (uint8_t *)(kernel_base + TARGET_1360_OFFSET);
+    volatile uint8_t *patch_target = (volatile uint8_t *)(kernel_base + TARGET_1360_OFFSET);
     
-    // 3. Inject assembly instructions: XOR EAX, EAX; RET (\x31\xC0\xC3)
+    // 3. Inject assembly instructions securely using proper array index assignment: XOR EAX, EAX; RET
     patch_target[0] = 0x31;
     patch_target[1] = 0xC0;
     patch_target[2] = 0xC3;
